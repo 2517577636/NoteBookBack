@@ -1,0 +1,18 @@
+{
+  "name": "noteBook",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon ./src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "koa": "^2.13.4",
+    "koa-router": "^10.1.1",
+    "koa2-cors": "^2.0.6",
+    "nodemon": "^2.0.15"
+  }
+}
