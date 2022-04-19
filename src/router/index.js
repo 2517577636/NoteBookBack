@@ -1,13 +1,14 @@
 const Router = require("koa-router");
 const fs = require("fs");
 const path = require("path");
-const { transformCSVDataToArray, sortArr, isEmpty, transformStrToObj } = require("../util/index");
+const { transformCSVDataToArray, isEmpty, transformStrToObj, getDate } = require("../util/index");
 const { BillModel, CategoriesModel } = require("../model/index");
 
 const router = new Router();
 
 /**
- * bill: {
+ * 
+ * bill: { // 返回前端数据结构
  *  1 : [
  *      {
  *          type: 0,
@@ -22,24 +23,59 @@ const router = new Router();
 */
 
 const billFilePath = path.join(__dirname, "../data/bill.csv");
-const cateFilePath = path.join(__dirname, "../data/categories.csv");
-
-let billFileData = fs.readFileSync(billFilePath, {encoding: "utf-8"});
-let cateFielData = fs.readFileSync(cateFilePath, {encoding: "utf-8"});
 
 router.get("/", (ctx, next) => {
-    let billArr = transformCSVDataToArray(billFileData, BillModel),
-        cateArr = transformCSVDataToArray(cateFielData, CategoriesModel);
-
-    billArr = sortArr(billArr, "time");  
-    
-    ctx.body = {
+    let billFileData; // 账单文件内容
+    const resultData = { // 返回数据
         err: 0,
-        data: {
-            bill: billArr,
-            cate: cateArr
-        }
+        data: {},
+        msg: "default"
     }
+
+    try {
+        billFileData = fs.readFileSync(billFilePath, {encoding: "utf-8"});
+    }catch (e) {
+        console.log(e);
+    }
+
+    if (!billFileData) { // 获取文件内容失败直接返回
+        resultData.err = 1;
+        resultData.msg = "fail; failed to get file data!!!";
+
+        ctx.body = resultData;
+        next();
+        return;
+    }
+
+    let billArr = transformCSVDataToArray(billFileData, BillModel);
+
+    if(isEmpty(billArr)) {
+        resultData.err = 1;
+        resultData.msg = "fail, the billArr is empty!!!"
+
+        ctx.body = resultData;
+        next();
+        return;
+    }
+
+    let finalObj = {}; // 最终返回前端数据
+    billArr.forEach(bill => {
+        let date = getDate(bill.time);
+
+        // 按时间顺序存入月份账单中
+        if(!!finalObj[date.month] && finalObj[date.month].length > 0) {
+            if(bill.time >= finalObj[date.month][0].time) {
+                finalObj[date.month].unshift(bill);
+            }
+        }else {
+            finalObj[date.month] = [bill]
+        }
+    })
+    
+    resultData.data.bill = finalObj;
+    resultData.msg = "success";
+
+    ctx.body = resultData;
 })
 
 router.post("/create", (ctx, next) => { // 添加新账单
@@ -99,7 +135,7 @@ router.post("/create", (ctx, next) => { // 添加新账单
         }
     });
 
-    resultData.data = finalBill;
+    resultData.data.bill = finalBill;
     resultData.msg = "success";
     ctx.body = resultData;
 })

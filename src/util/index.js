@@ -1,45 +1,52 @@
-const { BillModel, CategoriesModel } = require("../model/index")
-
 /**
- * @description 将csv文件内容，转换成对象。返回一个数组
- * @param content<string>
+ * @description 将csv文件内容，按照model转换成对象。返回一个数组
+ * @param str<string>
  * @returns 
  *         - resArr<Array>
  * */
 
-function transformCSVDataToArray(content, model) {
+function transformCSVDataToArray(str, model) {
     let res = [];
 
-    // conten为空 || content类型不为string 进行错误日志打印，并返回一个空数组
-    if(!content || typeof content !== "string") {
+    // conten为空 || str类型不为string 进行错误日志打印，并返回一个空数组
+    if(!str || typeof str !== "string") {
         console.error("content is null or not a string");
         return res;    
     }
 
     const contentReg = /\w+/g;
 
-    let csvDataRawArr = content.split("\r\n"),
-        csvDataTypeArr = csvDataRawArr[0].match(contentReg);
+    let csvDataRawArr, csvDataTypeArr;
 
+    try {
+        csvDataRawArr = str.split("\r\n"), // 文件内容转换成字符串数组 例如： ["type,time,category,amount", "0,1561910400000,8s0p77c323,5400"]
+        csvDataTypeArr = csvDataRawArr[0].match(contentReg); // 获取属性字符串数组 例如: ["type","time","category","amount"]
+    } catch (e) {
+        console.log(e);
+        return res;
+    }
+        
     csvDataRawArr.splice(0, 1); // 去除type，只保留数据
 
-    // 将字符串转换成object
-    csvDataRawArr.forEach((billStr, idx, self) => {
-        let tempObj = {};
-        let csvDataArr = billStr.split(",");
+    // 将字符串根据model转换成object
+    csvDataRawArr.forEach((csvDataArrStr, idx, self) => {
+        let finalObj = {}; // 根据model生成的对象
+        let values = csvDataArrStr.split(",");
+
+        // 属性遍历，根据model进行类型转换,并添加至finalObj中
         csvDataTypeArr.forEach((key, kIdx, selfDataTypeArr) => {
             switch(model[key]) {
                 case  "number":
-                    csvDataArr[kIdx] = Number(csvDataArr[kIdx]);
+                    values[kIdx] = Number(values[kIdx]);
                     break;
                 default:
                 case "string": 
-                    csvDataArr[kIdx] = String(csvDataArr[kIdx]);
+                    values[kIdx] = String(values[kIdx]);
                     break;
             }
-            tempObj[key] = csvDataArr[kIdx]; 
+            finalObj[key] = values[kIdx]; 
         })
-        res.push(tempObj);
+        res.push(finalObj);
     })
 
     return res;
@@ -93,7 +100,7 @@ function clearAllSpace(str) {
 
 /**
  * @description 将类对象字符串转换成对象【浅拷贝】
- * @params strObj 例如：'{type:0, time:1650286816934, category:"3tqndrjqgrg", amount:3900}'
+ * @param strObj 例如：'{type:0, time:1650286816934, category:"3tqndrjqgrg", amount:3900}'
  * @returns 
  *      -- res<Obj>
  * */ 
@@ -122,8 +129,8 @@ function transformStrToObj(strObj) {
 
 /**
  * @description 为目标对象添加键值对，如果arr不为数组或者长度不为2，直接返回目标对象。 
- * @params targetObj<Object>
- * @params arr<Array> arr为一个键值对数组，长度为2. 例如：["type"；"0"]
+ * @param targetObj<Object>
+ * @param arr<Array> arr为一个键值对数组，长度为2. 例如：["type"；"0"]
  * @returns
  *      -- res<Object>
  * */ 
@@ -176,6 +183,29 @@ function isEmptyArr(arr) {
 }
 
 /**
+ * @description 根据传入time毫秒数，返回对应的日期对象
+ * @param time
+ * @returns 
+ *      -- res
+ * */ 
+function getDate(time) {
+    let res = {};
+
+    if(!time) {
+        return res
+    }
+
+    let date = new Date(time);
+
+    res.month = date.getMonth() + 1;
+    res.year = date.getFullYear();
+    res.localDate = date.toLocaleDateString();
+
+    return res
+}
+
+
+/**
  * @description 判断targetObj 是否为一个对象，返回true | false
  * */ 
 function isObject(targetObj) {
@@ -194,5 +224,6 @@ module.exports = {
     clearAllSpace,
     isEmptyArr,
     isEmpty,
-    transformStrToObj
+    transformStrToObj,
+    getDate
 }
